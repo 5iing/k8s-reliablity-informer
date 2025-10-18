@@ -13,6 +13,7 @@ import (
 
 	"github.com/5iing/k3s-reliablity-informer/pkg/checker"
 	"github.com/5iing/k3s-reliablity-informer/pkg/config"
+	"github.com/5iing/k3s-reliablity-informer/pkg/notifier"
 )
 
 func main() {
@@ -40,7 +41,20 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	hc := checker.NewHealthChecker(ctx, client, *appConfig, nil)
+	var noti notifier.Notifier
+
+	if appConfig.Notifiers.Discord.Enabled && appConfig.Notifiers.Discord.WebhookURL != "" {
+		noti = notifier.NewDiscord(appConfig.Notifiers.Discord.WebhookURL)
+		fmt.Println("Discord notifications enabled")
+	} else if appConfig.Notifiers.Console.Enabled {
+		noti = notifier.NewConsole()
+		fmt.Println("Console notifications enabled")
+	} else {
+		noti = notifier.NewConsole()
+		fmt.Println("No notifier configured, using console as fallback")
+	}
+
+	hc := checker.NewHealthChecker(ctx, client, *appConfig, noti)
 
 	fmt.Println(" Starting K8s Health Checker")
 	fmt.Printf("   Pods: %v\n", appConfig.Checker.CheckPods)
