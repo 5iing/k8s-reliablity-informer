@@ -77,4 +77,4 @@ No polling involved. Informers handle all the watch mechanisms and caching. Even
 
 ## License
 
-See LICENSE file.
+Please See LICENSE file.
