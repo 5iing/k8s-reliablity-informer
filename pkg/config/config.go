@@ -13,9 +13,16 @@ type AppConfig struct {
 		CheckDeployments bool `yaml:"check_deployments"`
 	} `yaml:"checker"`
 	
-	Slack struct {
-		WebhookURL string `yaml:"webhook_url"`
-	} `yaml:"slack"`
+	Notifiers struct {
+		Discord struct {
+			Enabled   bool   `yaml:"enabled"`
+			WebhookURL string `yaml:"webhook_url"`
+		} `yaml:"discord"`
+		
+		Console struct {
+			Enabled bool `yaml:"enabled"`
+		} `yaml:"console"`
+	} `yaml:"notifiers"`
 }
 
 func LoadConfig(path string) (*AppConfig, error) {
