@@ -33,7 +33,7 @@ func (a *Alert) GetEmoji() string {
 		AlertLevelCritical: "🚨",
 		AlertLevelInfo:     "ℹ️",
 	}
-	
+
 	if emoji, exists := emojiMap[a.Level]; exists {
 		return emoji
 	}

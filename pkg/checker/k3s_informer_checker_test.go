@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/5iing/k3s-reliablity-informer/pkg/config"
-	"github.com/5iing/k3s-reliablity-informer/pkg/types"
+	"github.com/5iing/k8s-reliablity-informer/pkg/config"
+	"github.com/5iing/k8s-reliablity-informer/pkg/types"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -215,7 +215,7 @@ func TestHealthChecker_checkPod(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			notifier.ClearAlerts()
 			hc.checkPod(tt.pod)
-			
+
 			if len(notifier.GetAlerts()) != tt.expected {
 				t.Errorf("Expected %d alerts, got %d", tt.expected, len(notifier.GetAlerts()))
 				for i, alert := range notifier.GetAlerts() {
@@ -313,7 +313,7 @@ func TestHealthChecker_checkNode(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			notifier.ClearAlerts()
 			hc.checkNode(tt.node)
-			
+
 			alerts := notifier.GetAlerts()
 			if len(alerts) != tt.expected {
 				t.Errorf("Expected %d alerts, got %d", tt.expected, len(alerts))
@@ -397,7 +397,7 @@ func TestHealthChecker_checkDeployment(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			notifier.ClearAlerts()
 			hc.checkDeployment(tt.deploy)
-			
+
 			if len(notifier.GetAlerts()) != tt.expected {
 				t.Errorf("Expected %d alerts, got %d", tt.expected, len(notifier.GetAlerts()))
 				for i, alert := range notifier.GetAlerts() {

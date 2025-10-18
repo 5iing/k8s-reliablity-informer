@@ -1,4 +1,4 @@
-# k3s-health-checker
+# k8s-health-checker
 
 Kubernetes cluster monitoring tool built with client-go informers.
 Because my raspberry pi nodes have a death wish.

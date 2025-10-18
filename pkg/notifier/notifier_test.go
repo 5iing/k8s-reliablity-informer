@@ -190,7 +190,7 @@ func TestNewDiscord(t *testing.T) {
 		t.Error("Expected non-nil HTTP client")
 	}
 
-	if d.client.Timeout != 10*1000000000 { 
+	if d.client.Timeout != 10*1000000000 {
 		t.Errorf("Expected timeout 10s, got %v", d.client.Timeout)
 	}
 }

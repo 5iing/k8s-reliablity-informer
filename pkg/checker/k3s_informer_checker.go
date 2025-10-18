@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/5iing/k3s-reliablity-informer/pkg/config"
-	"github.com/5iing/k3s-reliablity-informer/pkg/types"
+	"github.com/5iing/k8s-reliablity-informer/pkg/config"
+	"github.com/5iing/k8s-reliablity-informer/pkg/types"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -16,13 +16,12 @@ import (
 )
 
 type HealthChecker struct {
-	client kubernetes.Interface
-	factory informers.SharedInformerFactory
-	config config.AppConfig
-	notifier Notifier
+	client       kubernetes.Interface
+	factory      informers.SharedInformerFactory
+	config       config.AppConfig
+	notifier     Notifier
 	alertHistory map[string]time.Time
 }
-
 
 const (
 	Synced    = "Synced"
@@ -41,10 +40,10 @@ func NewHealthChecker(
 ) *HealthChecker {
 
 	return &HealthChecker{
-		client: client,
-		factory: informers.NewSharedInformerFactory(client, 30*time.Second),
-		config: config,
-		notifier: notifier,
+		client:       client,
+		factory:      informers.NewSharedInformerFactory(client, 30*time.Second),
+		config:       config,
+		notifier:     notifier,
 		alertHistory: make(map[string]time.Time),
 	}
 
@@ -56,7 +55,7 @@ func (hc *HealthChecker) Start(ctx context.Context) error {
 			cache.ResourceEventHandlerFuncs{
 				UpdateFunc: func(old, new interface{}) {
 					hc.checkPod(new.(*corev1.Pod))
-				},	
+				},
 			},
 		)
 		if err != nil {
@@ -96,7 +95,7 @@ func (hc *HealthChecker) Start(ctx context.Context) error {
 }
 
 func (hc *HealthChecker) checkPod(pod *corev1.Pod) {
-	//pod failed 
+	//pod failed
 	if pod.Status.Phase == corev1.PodFailed {
 		hc.sendAlert(types.Alert{
 			Level:    types.AlertLevelError,
@@ -107,17 +106,17 @@ func (hc *HealthChecker) checkPod(pod *corev1.Pod) {
 	}
 
 	for _, cs := range pod.Status.ContainerStatuses {
-		// crashloopfallback 
+		// crashloopfallback
 		if cs.State.Waiting != nil && cs.State.Waiting.Reason == "CrashLoopBackOff" {
 			hc.sendAlert(types.Alert{
-				Level: types.AlertLevelError,
+				Level:    types.AlertLevelError,
 				Resource: types.ResourceTypePod,
-				Name: fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
+				Name:     fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
 				Message:  "Container is in CrashLoopBackOff",
 			})
 		}
 
-		// restart 
+		// restart
 		if cs.RestartCount > 5 {
 			hc.sendAlert(types.Alert{
 				Level:    types.AlertLevelWarning,
@@ -128,21 +127,21 @@ func (hc *HealthChecker) checkPod(pod *corev1.Pod) {
 		}
 
 		// pod waiting or image pull back of ffff
-		if cs.State.Waiting != nil && 
-		(cs.State.Waiting.Reason == "ImagePullBackOff" || cs.State.Waiting.Reason == "ErrImagePull") {
-		 hc.sendAlert(types.Alert{
-			 Level:    types.AlertLevelError,
-			 Resource: types.ResourceTypePod,
-			 Name:     fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
-			 Message:  fmt.Sprintf("Image pull failed: %s", cs.State.Waiting.Reason),
-		 })
+		if cs.State.Waiting != nil &&
+			(cs.State.Waiting.Reason == "ImagePullBackOff" || cs.State.Waiting.Reason == "ErrImagePull") {
+			hc.sendAlert(types.Alert{
+				Level:    types.AlertLevelError,
+				Resource: types.ResourceTypePod,
+				Name:     fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
+				Message:  fmt.Sprintf("Image pull failed: %s", cs.State.Waiting.Reason),
+			})
 		}
 	}
 }
 
 func (hc *HealthChecker) checkNode(node *corev1.Node) {
 	for _, cond := range node.Status.Conditions {
-		// not ready 
+		// not ready
 		if cond.Type == corev1.NodeReady && cond.Status != corev1.ConditionTrue {
 			hc.sendAlert(types.Alert{
 				Level:    types.AlertLevelCritical,
@@ -195,15 +194,15 @@ func (hc *HealthChecker) checkDeployment(deploy *appsv1.Deployment) {
 func (hc *HealthChecker) sendAlert(alert types.Alert) {
 	alertKey := fmt.Sprintf("%s:%s:%s", alert.Level, alert.Resource, alert.Name)
 	now := time.Now()
-	
+
 	if lastAlert, exists := hc.alertHistory[alertKey]; exists {
 		if now.Sub(lastAlert) < 5*time.Minute {
 			return
 		}
 	}
-	
+
 	hc.alertHistory[alertKey] = now
-	
+
 	msg := alert.FormatMessage()
 	fmt.Println(msg)
 

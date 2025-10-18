@@ -11,9 +11,9 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd"
 
-	"github.com/5iing/k3s-reliablity-informer/pkg/checker"
-	"github.com/5iing/k3s-reliablity-informer/pkg/config"
-	"github.com/5iing/k3s-reliablity-informer/pkg/notifier"
+	"github.com/5iing/k8s-reliablity-informer/pkg/checker"
+	"github.com/5iing/k8s-reliablity-informer/pkg/config"
+	"github.com/5iing/k8s-reliablity-informer/pkg/notifier"
 )
 
 func main() {
