@@ -1,2 +1,18 @@
-#binary
+# binary
 k3s-health-checker
+
+# config with secrets
+config.yaml
+
+# test coverage
+*.out
+coverage.txt
+
+# ide
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# os
+.DS_Store
