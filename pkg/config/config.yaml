@@ -1,0 +1,7 @@
+checker:
+  check_pods: true
+  check_nodes: true
+  check_deployments: true
+
+discord:
+  webhook_url: "ENTER_YOUR_DISCORD_WEB_HOOK"
