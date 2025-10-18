@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/5iing/k3s-reliablity-informer/pkg/config"
+	"github.com/5iing/k3s-reliablity-informer/pkg/types"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
@@ -22,12 +23,6 @@ type HealthChecker struct {
 	alertHistory map[string]time.Time
 }
 
-type Alert struct {
-	Level string 
-	Resource string 
-	Name string 
-	Message string
-}
 
 const (
 	Synced    = "Synced"
@@ -103,9 +98,9 @@ func (hc *HealthChecker) Start(ctx context.Context) error {
 func (hc *HealthChecker) checkPod(pod *corev1.Pod) {
 	//pod failed 
 	if pod.Status.Phase == corev1.PodFailed {
-		hc.sendAlert(Alert{
-			Level:    "error",
-			Resource: "pod",
+		hc.sendAlert(types.Alert{
+			Level:    types.AlertLevelError,
+			Resource: types.ResourceTypePod,
 			Name:     fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
 			Message:  fmt.Sprintf("Pod failed: %s", pod.Status.Reason),
 		})
@@ -114,9 +109,9 @@ func (hc *HealthChecker) checkPod(pod *corev1.Pod) {
 	for _, cs := range pod.Status.ContainerStatuses {
 		// crashloopfallback 
 		if cs.State.Waiting != nil && cs.State.Waiting.Reason == "CrashLoopBackOff" {
-			hc.sendAlert(Alert{
-				Level: "error",
-				Resource: "pod",
+			hc.sendAlert(types.Alert{
+				Level: types.AlertLevelError,
+				Resource: types.ResourceTypePod,
 				Name: fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
 				Message:  "Container is in CrashLoopBackOff",
 			})
@@ -124,9 +119,9 @@ func (hc *HealthChecker) checkPod(pod *corev1.Pod) {
 
 		// restart 
 		if cs.RestartCount > 5 {
-			hc.sendAlert(Alert{
-				Level:    "warning",
-				Resource: "pod",
+			hc.sendAlert(types.Alert{
+				Level:    types.AlertLevelWarning,
+				Resource: types.ResourceTypePod,
 				Name:     fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
 				Message:  fmt.Sprintf("High restart count: %d", cs.RestartCount),
 			})
@@ -135,9 +130,9 @@ func (hc *HealthChecker) checkPod(pod *corev1.Pod) {
 		// pod waiting or image pull back of ffff
 		if cs.State.Waiting != nil && 
 		(cs.State.Waiting.Reason == "ImagePullBackOff" || cs.State.Waiting.Reason == "ErrImagePull") {
-		 hc.sendAlert(Alert{
-			 Level:    "error",
-			 Resource: "pod",
+		 hc.sendAlert(types.Alert{
+			 Level:    types.AlertLevelError,
+			 Resource: types.ResourceTypePod,
 			 Name:     fmt.Sprintf("%s/%s", pod.Namespace, pod.Name),
 			 Message:  fmt.Sprintf("Image pull failed: %s", cs.State.Waiting.Reason),
 		 })
@@ -149,9 +144,9 @@ func (hc *HealthChecker) checkNode(node *corev1.Node) {
 	for _, cond := range node.Status.Conditions {
 		// not ready 
 		if cond.Type == corev1.NodeReady && cond.Status != corev1.ConditionTrue {
-			hc.sendAlert(Alert{
-				Level:    "critical",
-				Resource: "node",
+			hc.sendAlert(types.Alert{
+				Level:    types.AlertLevelCritical,
+				Resource: types.ResourceTypeNode,
 				Name:     node.Name,
 				Message:  fmt.Sprintf("Node is not ready: %s", cond.Reason),
 			})
@@ -159,9 +154,9 @@ func (hc *HealthChecker) checkNode(node *corev1.Node) {
 
 		// mem pressure
 		if cond.Type == corev1.NodeMemoryPressure && cond.Status == corev1.ConditionTrue {
-			hc.sendAlert(Alert{
-				Level:    "warning",
-				Resource: "node",
+			hc.sendAlert(types.Alert{
+				Level:    types.AlertLevelWarning,
+				Resource: types.ResourceTypeNode,
 				Name:     node.Name,
 				Message:  "Node has memory pressure",
 			})
@@ -169,9 +164,9 @@ func (hc *HealthChecker) checkNode(node *corev1.Node) {
 
 		// disk pressure
 		if cond.Type == corev1.NodeDiskPressure && cond.Status == corev1.ConditionTrue {
-			hc.sendAlert(Alert{
-				Level:    "warning",
-				Resource: "node",
+			hc.sendAlert(types.Alert{
+				Level:    types.AlertLevelWarning,
+				Resource: types.ResourceTypeNode,
 				Name:     node.Name,
 				Message:  "Node has disk pressure",
 			})
@@ -188,16 +183,16 @@ func (hc *HealthChecker) checkDeployment(deploy *appsv1.Deployment) {
 	available := deploy.Status.AvailableReplicas
 
 	if available < desired {
-		hc.sendAlert(Alert{
-			Level:    "warning",
-			Resource: "deployment",
+		hc.sendAlert(types.Alert{
+			Level:    types.AlertLevelWarning,
+			Resource: types.ResourceTypeDeployment,
 			Name:     fmt.Sprintf("%s/%s", deploy.Namespace, deploy.Name),
 			Message:  fmt.Sprintf("Replicas not ready: %d/%d available", available, desired),
 		})
 	}
 }
 
-func (hc *HealthChecker) sendAlert(alert Alert) {
+func (hc *HealthChecker) sendAlert(alert types.Alert) {
 	alertKey := fmt.Sprintf("%s:%s:%s", alert.Level, alert.Resource, alert.Name)
 	now := time.Now()
 	
@@ -209,19 +204,7 @@ func (hc *HealthChecker) sendAlert(alert Alert) {
 	
 	hc.alertHistory[alertKey] = now
 	
-	emoji := map[string]string{
-		"warning":  "⚠️",
-		"error":    "❌",
-		"critical": "🚨",
-	}
-
-	msg := fmt.Sprintf("%s [%s] %s: %s",
-		emoji[alert.Level],
-		alert.Resource,
-		alert.Name,
-		alert.Message,
-	)
-
+	msg := alert.FormatMessage()
 	fmt.Println(msg)
 
 	if hc.notifier != nil {
